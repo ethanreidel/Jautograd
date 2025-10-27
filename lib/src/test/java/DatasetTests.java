@@ -7,7 +7,7 @@ class DatasetTests {
 
     @Test 
     @DisplayName("create: valid fields retained")
-    void create_Valid_ok() {
+    void createValidOK() {
         var ds = Dataset.create("xor", "memory", "label", List.of(Path.of("train.csv")));
         assertEquals("xor", ds.getName());
         assertEquals("memory", ds.getType());
@@ -17,28 +17,28 @@ class DatasetTests {
 
     @Test 
     @DisplayName("create: empty files throws")
-    void create_NoFiles_throws() {
+    void createNoFiles() {
         assertThrows(InvalidArgumentException.class, () ->
             Dataset.create("xor", "memory", "label", List.of()));
     }
 
     @Test 
     @DisplayName("validate: missing label column throws")
-    void validate_MissingLabel_throws() {
+    void validateMissingLabel() {
         var ds = Dataset.create("xor", "csv", "missing", List.of(Path.of("train.csv")));
         assertThrows(ValidationException.class, ds::validate);
     }
 
     @Test 
     @DisplayName("validate: non-existent file throws")
-    void validate_BadFile_throws() {
+    void validateBadFile() {
         var ds = Dataset.create("xor", "csv", "label", List.of(Path.of("does_not_exist.csv")));
         assertThrows(ValidationException.class, ds::validate);
     }
 
     @Test 
     @DisplayName("store: marks dataset as ready and assigns id")
-    void store_Persists_ok() {
+    void storePersists() {
         var ds = Dataset.create("xor", "memory", "label", List.of(Path.of("train.csv")));
         assertDoesNotThrow(ds::store);
         assertTrue(ds.isReady());

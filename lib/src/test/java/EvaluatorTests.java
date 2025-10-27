@@ -1,12 +1,10 @@
-package com.example.scalarml;
-
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.*;
 
 class EvaluatorTests {
 
     @Test @DisplayName("run: returns metrics with 0<=acc<=1")
-    void run_ValidSplit_ok() {
+    void runValidSplit() {
         var evaluator = new Evaluator();
         var artifact = new ModelArtifact("mlp-xor", 1024);
         var result = evaluator.run(artifact, 0.25);
@@ -15,7 +13,7 @@ class EvaluatorTests {
     }
 
     @Test @DisplayName("run: invalid split throws")
-    void run_InvalidSplit_throws() {
+    void runInvalidSplit() {
         var evaluator = new Evaluator();
         var artifact = new ModelArtifact("mlp-xor", 1024);
         assertThrows(InvalidArgumentException.class, () -> evaluator.run(artifact, -0.1));
@@ -23,7 +21,7 @@ class EvaluatorTests {
     }
 
     @Test @DisplayName("run: empty artifact throws")
-    void run_EmptyArtifact_throws() {
+    void runEmptyArtifact() {
         var evaluator = new Evaluator();
         var artifact = new ModelArtifact("empty", 0);
         assertThrows(ValidationException.class, () -> evaluator.run(artifact, 0.2));

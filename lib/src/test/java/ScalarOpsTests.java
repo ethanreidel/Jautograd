@@ -10,10 +10,8 @@ class ScalarOpsTests {
         assertEquals(expected, actual, EPS, "expected=" + expected + " actual=" + actual);
     }
 
-    // ----------- Basic arithmetic -----------
-
     @Test @DisplayName("add: forward and backward")
-    void add_ForwardBackward() {
+    void addForwardBackward() {
         Scalar a = Scalar.of(2.0);
         Scalar b = Scalar.of(3.0);
         Scalar c = a.add(b);              // c = 5
@@ -25,7 +23,7 @@ class ScalarOpsTests {
     }
 
     @Test @DisplayName("sub: forward and backward")
-    void sub_ForwardBackward() {
+    void subForwardBackward() {
         Scalar a = Scalar.of(5.0);
         Scalar b = Scalar.of(2.0);
         Scalar c = a.sub(b);              // c = 3
@@ -37,7 +35,7 @@ class ScalarOpsTests {
     }
 
     @Test @DisplayName("mul: forward and backward")
-    void mul_ForwardBackward() {
+    void mulForwardBackward() {
         Scalar a = Scalar.of(2.0);
         Scalar b = Scalar.of(3.0);
         Scalar c = a.mul(b);              // c = 6
@@ -49,7 +47,7 @@ class ScalarOpsTests {
     }
 
     @Test @DisplayName("div: forward and backward")
-    void div_ForwardBackward() {
+    void divForwardBackward() {
         Scalar a = Scalar.of(6.0);
         Scalar b = Scalar.of(3.0);
         Scalar c = a.div(b);              // c = 2
@@ -60,10 +58,8 @@ class ScalarOpsTests {
         assertClose(-2.0/3.0, b.grad());
     }
 
-    // ----------- Power -----------
-
     @Test @DisplayName("pow(const): forward and backward dy/da = p * a^(p-1)")
-    void pow_ConstExp_ForwardBackward() {
+    void powConstExpForwardBackward() {
         Scalar a = Scalar.of(2.0);
         Scalar y = a.pow(3.0);            // 8
         y.backward();
@@ -72,7 +68,7 @@ class ScalarOpsTests {
     }
 
     @Test @DisplayName("pow(var): forward and backward dy/da = b a^(b-1), dy/db = a^b ln(a)")
-    void pow_VarExp_ForwardBackward() {
+    void powVarExpForwardBackward() {
         Scalar a = Scalar.of(2.0);
         Scalar b = Scalar.of(3.0);
         Scalar y = a.pow(b);              // 8
@@ -83,7 +79,7 @@ class ScalarOpsTests {
     }
 
     @Test @DisplayName("exp: forward and backward dy/da = exp(a)")
-    void exp_ForwardBackward() {
+    void expForwardBackward() {
         Scalar a = Scalar.of(1.2);
         Scalar y = a.exp();
         y.backward();
@@ -92,7 +88,7 @@ class ScalarOpsTests {
     }
 
     @Test @DisplayName("log: forward and backward dy/da = 1/a")
-    void log_ForwardBackward() {
+    void logForwardBackward() {
         Scalar a = Scalar.of(2.5);
         Scalar y = a.log();
         y.backward();
@@ -101,7 +97,7 @@ class ScalarOpsTests {
     }
 
     @Test @DisplayName("tanh: forward in (-1,1) and backward dy/da = 1 - tanh(a)^2")
-    void tanh_ForwardBackward() {
+    void tanhForwardBackward() {
         Scalar a = Scalar.of(0.7);
         Scalar y = a.tanh();
         y.backward();
@@ -112,7 +108,7 @@ class ScalarOpsTests {
     }
 
     @Test @DisplayName("relu: forward clamp and backward {0 if a<=0, 1 if a>0}")
-    void relu_ForwardBackward_Positive() {
+    void reluForwardBackward_Positive() {
         Scalar a = Scalar.of(1.5);
         Scalar y = a.relu();
         y.backward();
@@ -121,7 +117,7 @@ class ScalarOpsTests {
     }
 
     @Test @DisplayName("relu at zero: gradient defined as 0")
-    void relu_ForwardBackward_AtZero() {
+    void reluForwardBackward_AtZero() {
         Scalar a = Scalar.of(0.0);
         Scalar y = a.relu();
         y.backward();
@@ -130,7 +126,7 @@ class ScalarOpsTests {
     }
 
     @Test @DisplayName("relu negative: gradient 0")
-    void relu_ForwardBackward_Negative() {
+    void reluForwardBackward_Negative() {
         Scalar a = Scalar.of(-2.0);
         Scalar y = a.relu();
         y.backward();
@@ -138,8 +134,8 @@ class ScalarOpsTests {
         assertClose(0.0, a.grad());
     }
 
-    @Test @DisplayName("shared subgraph (diamond): gradients accumulate over multiple paths")
-    void diamond_Accumulation() {
+    @Test @DisplayName("gradients accumulate over multiple paths")
+    void gradientAccumulation() {
         Scalar a = Scalar.of(2.0);
         Scalar b = Scalar.of(3.0);
         Scalar x = a.mul(b);              // a*b
