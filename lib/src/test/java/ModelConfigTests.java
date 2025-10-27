@@ -24,8 +24,8 @@ public class ModelConfigTests {
             "MLP", //modeltype
             new int[]{64, 128, 10},
             new String[]{"relu", "softmax"},
-            "adam",
-            "toy",
+            "sgd",
+            "xor",
             new Hyperparameters(0.001, 32, 10) //lr, batchsize, epochs
         );
         assertEquals("MLP", cfg.getModelType());
@@ -40,7 +40,7 @@ public class ModelConfigTests {
     @DisplayName("Empty layers")
     void defineEmptyLayersthrows() {
         assertThrows(InvalidArgumentException.class, () -> ModelConfig.define(
-            "MLP", new int[]{}, new String[]{}, "adam", "mnist", new Hyperparams(1e-3, 32, 10)
+            "MLP", new int[]{}, new String[]{}, "sgd", "xor", new Hyperparams(1e-3, 32, 10)
         ));
     }
 
@@ -51,8 +51,8 @@ public class ModelConfigTests {
             "MLP",
             new int[]{4,2},
             new String[]{"relu"},
-            "adam",
-            "toy",
+            "sgd",
+            "xor",
             new Hyperparams(0.001, 8, 2)
         );
         Path path = tmp.resolve("model-config.json");
