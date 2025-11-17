@@ -22,13 +22,13 @@ class DatasetTests {
     @DisplayName("create: empty files throws")
     void createNoFiles() {
         Path emptyCsv = Paths.get("/home/ethan-reidel/Coding/PomonaWork/Jautograd/lib/src/main/resources/data/empty.csv");
-        assertThrows(IllegalArgumentException.class, () -> new CsvDataset(emptyCsv, "label"));
+        assertThrows(UncheckedIOException.class, () -> new CsvDataset(emptyCsv, "label"));
     }
 
     @Test 
     @DisplayName("validate: missing label column throws")
     void validateMissingLabel() {
-        Path csv = Paths.get("/home/ethan-reidel/Coding/PomonaWork/Jautograd/lib/src/main/resources/data/xor.csv");
+        Path csv = Paths.get("/home/ethan-reidel/Coding/PomonaWork/Jautograd/lib/src/test/java/unit_tests/xor_bad.csv");
         assertThrows(IllegalArgumentException.class, () -> new CsvDataset(csv, "missing"));
     }
 

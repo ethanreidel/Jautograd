@@ -6,7 +6,6 @@ import java.util.*;
 public final class DataLoader {
     private final int batchSize;
     private final boolean shuffle;
-    private final Random rng = new Random(1234); // or injectable
 
     public DataLoader(int batchSize, boolean shuffle) {
         if (batchSize <= 0) throw new InvalidParameterException("batchSize must be > 0");
