@@ -1,48 +1,42 @@
 package unit_tests;
 import static org.junit.jupiter.api.Assertions.*;
 import java.nio.file.Path;
-import java.util.List;
+import java.nio.file.Paths;
 import org.junit.jupiter.api.*;
+import data.*;
+import java.io.UncheckedIOException;
 
 class DatasetTests {
 
     @Test 
     @DisplayName("create: valid fields retained")
     void createValidOK() {
-        var ds = Dataset.create("xor", "memory", "label", List.of(Path.of("train.csv")));
-        assertEquals("xor", ds.getName());
-        assertEquals("memory", ds.getType());
-        assertEquals("label", ds.getLabelColumn());
-        assertEquals(1, ds.getFiles().size());
+        Path csv = Paths.get("/home/ethan-reidel/Coding/PomonaWork/Jautograd/lib/src/main/resources/data/xor.csv");
+        CsvDataset ds = new CsvDataset(csv, "label");
+        assertEquals("label", ds.labelColumn());
+        assertEquals(ds.header().indexOf("label"), ds.labelIndex());
+        assertEquals(ds.header().size(), ds.header().size());
     }
 
     @Test 
     @DisplayName("create: empty files throws")
     void createNoFiles() {
-        assertThrows(InvalidArgumentException.class, () ->
-            Dataset.create("xor", "memory", "label", List.of()));
+        Path emptyCsv = Paths.get("/home/ethan-reidel/Coding/PomonaWork/Jautograd/lib/src/main/resources/data/empty.csv");
+        assertThrows(IllegalArgumentException.class, () -> new CsvDataset(emptyCsv, "label"));
     }
 
     @Test 
     @DisplayName("validate: missing label column throws")
     void validateMissingLabel() {
-        var ds = Dataset.create("xor", "csv", "missing", List.of(Path.of("train.csv")));
-        assertThrows(ValidationException.class, ds::validate);
+        Path csv = Paths.get("/home/ethan-reidel/Coding/PomonaWork/Jautograd/lib/src/main/resources/data/xor.csv");
+        assertThrows(IllegalArgumentException.class, () -> new CsvDataset(csv, "missing"));
     }
 
     @Test 
     @DisplayName("validate: non-existent file throws")
     void validateBadFile() {
-        var ds = Dataset.create("xor", "csv", "label", List.of(Path.of("does_not_exist.csv")));
-        assertThrows(ValidationException.class, ds::validate);
+        Path badCsv = Paths.get("/home/ethan-reidel/Coding/PomonaWork/Jautograd/lib/src/main/resources/data/does_not_exist.csv");
+        assertThrows(UncheckedIOException.class, () -> new CsvDataset(badCsv, "label"));
     }
 
-    @Test 
-    @DisplayName("store: marks dataset as ready and assigns id")
-    void storePersists() {
-        var ds = Dataset.create("xor", "memory", "label", List.of(Path.of("train.csv")));
-        assertDoesNotThrow(ds::store);
-        assertTrue(ds.isReady());
-        assertNotNull(ds.getId());
-    }
 }

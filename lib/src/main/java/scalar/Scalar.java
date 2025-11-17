@@ -74,6 +74,53 @@ public class Scalar {
         };
         return res;
     }
+    public Scalar pow(double value) {
+        Scalar res = new Scalar(Math.pow(this.data, value));
+        res.op = "**";
+        res.children.add(this);
+        res._backward = () -> {
+            this.grad += (value * Math.pow(this.data, value-1));
+        };
+        return res;
+    }
+    public Scalar exp() {
+        Scalar res = new Scalar(Math.exp(this.data));
+        res.op = "e";
+        res.children.add(this);
+        res._backward = () -> {
+            this.grad += res.data * res.grad;
+        };
+        return res;
+    }
+    public Scalar log() {
+        Scalar res = new Scalar(Math.log(this.data));
+        res.op = "log";
+        res.children.add(this);
+        res._backward = () -> {
+            this.grad += (1 / this.data);
+        };
+        return res;
+    }
+    public Scalar tanh() {
+        Scalar res = new Scalar(Math.tanh(this.data));
+        res.op = "tanh";
+        res.children.add(this);
+        res._backward = () -> {
+            double numerator = 4*(Math.exp(2*this.data));
+            double denominator = Math.pow(Math.exp(2*this.data)+1, 2);
+            this.grad += (numerator/denominator);
+        };
+        return res;
+    }
+    public Scalar relu() {
+        Scalar res = new Scalar(Math.max(0, this.data));
+        res.op = "relu";
+        res.children.add(this);
+        res._backward = () -> {
+            this.grad += (this.data > 0 ? 1 : 0) * res.grad;
+        };
+        return res;
+    }
   
     public void buildTopo(List<Scalar> topo, Set<Scalar> visited, Scalar node) {
         if (!visited.contains(node)) {
@@ -95,6 +142,10 @@ public class Scalar {
         for (int i = topo.size()-1; i >= 0; i--) {
             topo.get(i)._backward.run();
         }
+    }
+
+    public void zeroGrad() {
+        this.grad = 0;
     }
 
     @Override
