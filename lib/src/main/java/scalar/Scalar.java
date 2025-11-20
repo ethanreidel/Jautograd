@@ -6,7 +6,7 @@ import java.util.HashSet;
 
 public class Scalar {
     
-    private double data;
+    public double data;
     private double grad;
     private List<Scalar> children;
     private String op;

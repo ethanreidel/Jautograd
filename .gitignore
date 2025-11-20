@@ -1,6 +1,7 @@
 .gradle
 **/build/
 !**/src/**/build/
+/home/ethan-reidel/Coding/PomonaWork/Jautograd/lib/src/main/java/data/Demo.java
 
 # Ignore Gradle GUI config
 gradle-app.setting
