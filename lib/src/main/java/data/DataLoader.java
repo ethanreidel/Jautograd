@@ -14,6 +14,10 @@ public final class DataLoader {
         this.shuffle = shuffle;
     }
 
+    public int batchSize() {
+        return batchSize;
+    }
+
     public List<Batch> loadData(CsvDataset ds) {
         if (ds == null) {
             throw new InvalidParameterException("Dataset is not ready");

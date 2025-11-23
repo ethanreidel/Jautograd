@@ -9,9 +9,6 @@ public record Batch(List<List<Scalar>> features, List<Integer> label) {
     public List<Scalar> getBatch(int i) {
         return features.get(i);
     }
-    public Integer batchSize() {
-        return features.
-    }
  
     @Override
     public String toString() {

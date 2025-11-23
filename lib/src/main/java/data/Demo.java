@@ -19,24 +19,28 @@ public class Demo {
         List<Batch> data = dl.loadData(ds);
         
  
-        List<Integer> layers = new ArrayList<>(java.util.Arrays.asList(2, 1));
+        List<Integer> layers = new ArrayList<>(java.util.Arrays.asList(2, 2, 1));
 
-        MLP model = new MLP(2, layers); 
-        System.out.println(model);
-        for (Batch b : data) {
-            for (int i = 0; i < b.size(); i++) {
-                
-            }
-        //     ArrayList<double[]> features = b.getBatch();
-
-            model.forward(b.getBatch());
-
-        //     System.out.println(b);
-            
-        }
+        // x \--> x ---> output
+        // x /--> x /
 
 
+        //List<List<Scalar>> output = new ArrayList<>();
 
+        
+        MLP model = new MLP(2, Arrays.asList(16, 16, 1));
+        Optimizer optim = new Optimizer(.001);
+
+
+        
+
+        Trainer trainer = new Trainer(optim, model, 100, dl, ds);
+        trainer.train();
+
+        
+
+
+        
 
 
 
