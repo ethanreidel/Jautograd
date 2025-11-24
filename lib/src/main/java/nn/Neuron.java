@@ -41,12 +41,6 @@ public class Neuron extends Module {
         sb.append(nonlin ? "ReLU" : "Linear");
         sb.append("Neuron(").append(w.size());
         sb.append(")");
-        
-        //.append(") weights=[");
-        // for (int i = 0; i < w.size(); i++) {
-        //     sb.append(String.format("%.3f", w.get(i).data()));
-        //     if (i < w.size() - 1) sb.append(", ");
-        // }
         sb.append("]");
         return sb.toString();
     }

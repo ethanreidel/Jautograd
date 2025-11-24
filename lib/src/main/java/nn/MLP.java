@@ -19,7 +19,6 @@ public class MLP extends Module {
     }
 
     public List<Scalar> forward(List<Scalar> x) {
-    //public List<Scalar> forward(ArrayList<double[]> x) {
         List<Scalar> out = x;
         for (Layer layer : layers) {
             out = layer.forward(out);

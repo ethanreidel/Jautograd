@@ -37,8 +37,6 @@ public final class CsvDataset implements Iterable<Example> {
                 "missing label column '" + labelColumn + "' in header: " + this.header);
             this.labelIndex = idx;
             this.totalColumns = this.header.size();
-            System.out.println(this.totalColumns);
-
         } catch (IOException e) {
             throw new UncheckedIOException("failed reading header", e);
         }
@@ -91,8 +89,6 @@ public final class CsvDataset implements Iterable<Example> {
 
                 String[] parts = line.split(",", -1);
                 
-
-                System.out.println(Arrays.toString(parts));
                 if (parts.length != totalColumns) {
                     throw new IllegalArgumentException("column count mismatch at row: " + line);
                 }
