@@ -1,0 +1,6 @@
+numFeatures: 2
+layerSizes: [16, 16, 1]
+learningRate: 0.001
+epochs: 100
+batchSize: 2
+shuffle: true
