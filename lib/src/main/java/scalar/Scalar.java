@@ -121,6 +121,49 @@ public class Scalar {
         };
         return res;
     }
+    public Scalar abs() {
+        Scalar out = new Scalar(Math.abs(this.data));
+        out.op = "abs";
+        out.children.add(this);
+
+        out._backward = () -> {
+            double sign;
+            if (this.data > 0.0)      sign = 1.0;
+            else if (this.data < 0.0) sign = -1.0;
+            else                      sign = 0.0;
+            this.grad += out.grad * sign;
+        };
+
+        return out;
+    }
+    public static Scalar max(Scalar a, Scalar b) {
+        Scalar out = new Scalar(Math.max(a.data, b.data));
+        out.op = "max";
+        out.children.add(a);
+        out.children.add(b);
+
+        out._backward = () -> {
+            double gradA = (a.data >= b.data) ? 1.0 : 0.0;
+            double gradB = (b.data >  a.data) ? 1.0 : 0.0;
+            a.grad += out.grad * gradA;
+            b.grad += out.grad * gradB;
+        };
+
+        return out;
+    }
+
+    public Scalar neg() {
+        Scalar out = new Scalar(-this.data);
+        out.op = "neg";
+        out.children.add(this);
+
+        out._backward = () -> {
+            this.grad += -1.0 * out.grad;
+        };
+
+        return out;
+    }
+
   
     public void buildTopo(List<Scalar> topo, Set<Scalar> visited, Scalar node) {
         if (!visited.contains(node)) {
