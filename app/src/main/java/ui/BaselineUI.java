@@ -20,8 +20,6 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
-
-
 import data.CsvDataset;
 import nn.*;
 
@@ -72,8 +70,7 @@ public class BaselineUI extends Application {
         cmArea.setEditable(false);
         cmArea.setPrefRowCount(6);
         cmArea.setPromptText("Confusion matrix and epoch metrics will appear here…");
-
-
+        
         loadConfigButton.setOnAction(e -> {
             if (configLoaded.get() && loaded != null) {
                 new Alert(Alert.AlertType.INFORMATION, "Config already loaded.").showAndWait();
@@ -128,7 +125,9 @@ public class BaselineUI extends Application {
                 if (loaded.getDatasetPath() != null) datasetPath.setText(loaded.getDatasetPath());
                 if (loaded.getNumFeatures() > 0) inputSize.setText(String.valueOf(loaded.getNumFeatures()));
                 if (loaded.getLayerSizes() != null && !loaded.getLayerSizes().isEmpty()) {
-                    layers.setText(loaded.getLayerSizes().stream().map(Object::toString).collect(Collectors.joining(",")));
+                    layers.setText(loaded.getLayerSizes().stream()
+                            .map(Object::toString)
+                            .collect(Collectors.joining(",")));
                 }
                 if (loaded.getLearningRate() > 0) learningRate.setText(String.valueOf(loaded.getLearningRate()));
                 if (loaded.getEpochs() > 0) epochs.setText(String.valueOf(loaded.getEpochs()));
@@ -143,6 +142,7 @@ public class BaselineUI extends Application {
         trainButton.setOnAction(e2 -> {
             try {
                 ModelConfig cfg;
+
                 if (loaded == null) {
                     String ds = requireNonEmpty(datasetPath.getText(), "Dataset path");
                     int inSize = parseInt(requireNonEmpty(inputSize.getText(), "Input size"), "Input size");
@@ -153,9 +153,12 @@ public class BaselineUI extends Application {
 
                     String tgt = requireNonEmpty(labelColumn.getText(), "Target/label column");
                     dataset = new CsvDataset(Paths.get(ds), tgt);
-                    try { lastDir = Paths.get(ds).toAbsolutePath().getParent().toFile(); } catch (Exception ignore) {}
+                    try {
+                        lastDir = Paths.get(ds).toAbsolutePath().getParent().toFile();
+                    } catch (Exception ignore) {}
 
-                    Optimizer optim = new Optimizer(lr);
+                    OptimizerType type = OptimizerType.SGD;
+
                     MLP model = new MLP(inSize, layerSizesList);
 
                     ModelConfig.Builder b = new ModelConfig.Builder()
@@ -164,19 +167,30 @@ public class BaselineUI extends Application {
                             .learningRate(lr)
                             .epochs(eps)
                             .datasetPath(ds)
-                            .optimizer(optim)
+                            .optimizerType(type)
                             .model(model);
                     if (bs != null) b.batchSize(bs);
                     cfg = b.build();
+
                 } else {
                     cfg = loaded;
 
                     if (!isBlank(datasetPath.getText())) cfg.setDatasetPath(datasetPath.getText().trim());
-                    if (!isBlank(inputSize.getText())) cfg.setNumFeatures(parseInt(inputSize.getText().trim(), "Input size"));
-                    if (!isBlank(layers.getText())) cfg.setLayerSizes(parseLayerList(layers.getText().trim()));
-                    if (!isBlank(learningRate.getText())) cfg.setLearningRate(parseDouble(learningRate.getText().trim(), "Learning rate"));
-                    if (!isBlank(epochs.getText())) cfg.setEpochs(parseInt(epochs.getText().trim(), "Epochs"));
-                    if (!isBlank(batchSize.getText())) cfg.setBatchSize(parseInt(batchSize.getText().trim(), "Batch size"));
+                    if (!isBlank(inputSize.getText()))
+                        cfg.setNumFeatures(parseInt(inputSize.getText().trim(), "Input size"));
+                    if (!isBlank(layers.getText()))
+                        cfg.setLayerSizes(parseLayerList(layers.getText().trim()));
+                    if (!isBlank(learningRate.getText()))
+                        cfg.setLearningRate(parseDouble(learningRate.getText().trim(), "Learning rate"));
+                    if (!isBlank(epochs.getText()))
+                        cfg.setEpochs(parseInt(epochs.getText().trim(), "Epochs"));
+                    if (!isBlank(batchSize.getText()))
+                        cfg.setBatchSize(parseInt(batchSize.getText().trim(), "Batch size"));
+
+                    OptimizerType type = cfg.getOptimizerType();
+                    if (type == null) {
+                        type = OptimizerType.SGD;
+                    }
 
                     cfg = new ModelConfig.Builder()
                             .numFeatures(cfg.getNumFeatures())
@@ -185,21 +199,24 @@ public class BaselineUI extends Application {
                             .epochs(cfg.getEpochs())
                             .batchSize(cfg.getBatchSize())
                             .datasetPath(cfg.getDatasetPath())
-                            .optimizer(new Optimizer(cfg.getLearningRate()))
+                            .optimizerType(type)
                             .model(new MLP(cfg.getNumFeatures(), cfg.getLayerSizes()))
                             .build();
 
                     String dsPath = requireNonEmpty(cfg.getDatasetPath(), "Dataset path (from YAML/fields)");
                     String tgt = requireNonEmpty(labelColumn.getText(), "Target/label column");
                     dataset = new CsvDataset(Paths.get(dsPath), tgt);
-                    try { lastDir = Paths.get(dsPath).toAbsolutePath().getParent().toFile(); } catch (Exception ignore) {}
-
-
+                    try {
+                        lastDir = Paths.get(dsPath).toAbsolutePath().getParent().toFile();
+                    } catch (Exception ignore) {}
 
                     loaded = cfg;
                 }
 
                 trainButton.setDisable(true);
+                graphs.clear();
+                cmArea.clear();
+
                 final ModelConfig runCfg = cfg;
                 final CsvDataset runDataset = dataset;
 
@@ -207,24 +224,28 @@ public class BaselineUI extends Application {
                     try {
                         Trainer trainer = new Trainer(runCfg, runDataset);
 
-                        trainer.setStepListener(step -> {
-                            double loss = trainer.getLastLoss();
-                            double acc  = trainer.getLastAccuracy();
-                            graphs.push(step, loss, acc);
-                        });
+                        trainer.addObserver(graphs);
 
-                        trainer.setEpochListener((epoch, cm) -> {
-                            double acc = cm.accuracy();
-                            double prec = cm.precision();
-                            double rec = cm.recall();
-                            double f1 = cm.f1();
-                            String txt = String.format(
-                                    "Epoch %d%n" +
-                                            "TP=%d FP=%d FN=%d TN=%d  |  Acc=%.4f  Prec=%.4f  Rec=%.4f  F1=%.4f%n%n",
-                                    epoch, cm.getTP(), cm.getFP(), cm.getFN(), cm.getTN(),
-                                    acc, prec, rec, f1
-                            );
-                            Platform.runLater(() -> cmArea.appendText(txt));
+                        trainer.addObserver(new TrainingObserver() {
+                            @Override
+                            public void onEpoch(int epoch,
+                                                ConfusionMatrix cm,
+                                                double avgLoss,
+                                                double accuracy) {
+
+                                double prec = cm.precision();
+                                double rec  = cm.recall();
+                                double f1   = cm.f1();
+
+                                String txt = String.format(
+                                        "Epoch %d%n" +
+                                        "TP=%d FP=%d FN=%d TN=%d  |  Acc=%.4f  Prec=%.4f  Rec=%.4f  F1=%.4f  Loss=%.6f%n%n",
+                                        epoch, cm.getTP(), cm.getFP(), cm.getFN(), cm.getTN(),
+                                        accuracy, prec, rec, f1, avgLoss
+                                );
+
+                                Platform.runLater(() -> cmArea.appendText(txt));
+                            }
                         });
 
                         trainer.train();
@@ -257,7 +278,6 @@ public class BaselineUI extends Application {
                 new Label("Epoch summaries (confusion matrix):"),
                 cmArea
         );
-
 
         Scene scene = new Scene(root, 480, 420);
         primaryStage.setScene(scene);
