@@ -22,13 +22,22 @@ public class Neuron extends Module {
         this.nonlin = nonlinearity;
     }
 
-    public Scalar forward(List<Scalar> x) {
+
+    public Scalar forwardScalar(List<Scalar> x) {
         Scalar act = b;
         for (int i = 0; i < w.size(); i++) {
             act = act.add(w.get(i).mul(x.get(i)));
         }
         return nonlin ? act.relu() : act;
     }
+
+    @Override
+    public List<Scalar> forward(List<Scalar> x) {
+        List<Scalar> out = new ArrayList<>(1);
+        out.add(forwardScalar(x));
+        return out;
+    }
+
     public List<Scalar> parameters() {
         List<Scalar> params = new ArrayList<>(w);
         params.add(b);

@@ -17,7 +17,7 @@ public class Layer extends Module {
     public List<Scalar> forward(List<Scalar> x) {
         List<Scalar> out = new ArrayList<>();
         for (Neuron n : neurons) {
-            out.add(n.forward(x));
+            out.add(n.forwardScalar(x));
         }
         return out.size() == 1 ? List.of(out.get(0)) : out;
     }
