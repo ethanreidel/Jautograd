@@ -14,6 +14,9 @@ public class ModelConfig {
     private int batchSize;
     private String datasetPath;
 
+
+    private OptimizerType optimizerType = OptimizerType.SGD;
+
     private transient Optimizer optimizer;
     private transient MLP model;
 
@@ -36,9 +39,11 @@ public class ModelConfig {
     public int getEpochs() { return epochs; }
     public int getBatchSize() { return batchSize; }
     public String getDatasetPath() { return datasetPath; }
-    public Optimizer getOptimizer() { return optimizer; }
+    public OptimizerType getOptimizerType() { return optimizerType; }
+    
     public MLP getModel() { return model; }
-
+    
+    public void setOptimizerType(OptimizerType optimizerType) { this.optimizerType = optimizerType; }
     public void setNumFeatures(int numFeatures) { this.numFeatures = numFeatures; }
     public void setLayerSizes(List<Integer> layerSizes) { this.layerSizes = layerSizes; }
     public void setLearningRate(double learningRate) { this.learningRate = learningRate; }
@@ -53,6 +58,7 @@ public class ModelConfig {
         private int epochs;
         private int batchSize;
         private String datasetPath;
+        private OptimizerType optimizerType = OptimizerType.SGD;
         private Optimizer optimizer;
         private MLP model;
 
@@ -62,9 +68,50 @@ public class ModelConfig {
         public Builder epochs(int epochs) { this.epochs = epochs; return this; }
         public Builder batchSize(int batchSize) { this.batchSize = batchSize; return this; }
         public Builder datasetPath(String datasetPath) { this.datasetPath = datasetPath; return this; }
-        public Builder optimizer(Optimizer optimizer) { this.optimizer = optimizer; return this; }
         public Builder model(MLP model) { this.model = model; return this; }
+        public Builder optimizerType(OptimizerType optimizerType) {
+            this.optimizerType = optimizerType;
+            return this;
+        }
+        public Builder optimizer(Optimizer optimizer) {
+            this.optimizer = optimizer;
+            return this;
+        }
         public ModelConfig build() { return new ModelConfig(this); }
+    }
+
+    public Optimizer createOptimizer() {
+        if (this.optimizer != null) {
+            return this.optimizer;
+        }
+
+        if (optimizerType == null) {
+            optimizerType = OptimizerType.SGD;
+        }
+
+        switch (optimizerType) {
+            //TODO ADD ADAM
+            //case ADAM:
+            //    return new AdamOptimizer(learningRate);
+
+            case SGD:
+            default:
+                return new SGDOptimizer(learningRate);
+        }
+    }
+
+    public Optimizer getOrCreateOptimizer() {
+        if (optimizer == null) {
+            optimizer = createOptimizer();
+        }
+        return optimizer;
+    }
+
+    public MLP getOrCreateModel() {
+        if (model == null) {
+            model = new MLP(numFeatures, layerSizes);
+        }
+        return model;
     }
 
     public void saveConfigYaml(String filePath) {
@@ -80,8 +127,8 @@ public class ModelConfig {
         Yaml yaml = new Yaml(new Constructor(ModelConfig.class));
         try (FileReader reader = new FileReader(filePath)) {
             ModelConfig config = yaml.load(reader);
-            config.optimizer = new Optimizer(config.learningRate);
             config.model = new MLP(config.numFeatures, config.layerSizes);
+            config.optimizer = config.createOptimizer();
             return config;
         } catch (IOException e) {
             throw new RuntimeException("Failed to read ModelConfig YAML: " + e.getMessage(), e);

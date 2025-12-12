@@ -6,10 +6,12 @@ import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.layout.VBox;
+import nn.TrainingObserver;
+import nn.ConfusionMatrix;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class DrawMetricGraph extends VBox {
+public class DrawMetricGraph extends VBox implements TrainingObserver {
 
     private final LineChart<Number, Number> lossChart;
     private final LineChart<Number, Number> accChart;
@@ -21,7 +23,9 @@ public class DrawMetricGraph extends VBox {
 
     private static final class Point {
         final int step; final double loss; final double acc;
-        Point(int step, double loss, double acc) { this.step = step; this.loss = loss; this.acc = acc; }
+        Point(int step, double loss, double acc) {
+            this.step = step; this.loss = loss; this.acc = acc;
+        }
     }
 
     public DrawMetricGraph() {
@@ -49,6 +53,7 @@ public class DrawMetricGraph extends VBox {
         accChart = new LineChart<>(x2, y2);
         accChart.setTitle("Training Accuracy");
         accChart.setCreateSymbols(false);
+        accChart.setAnimated(false);
         accSeries.setName("Accuracy");
         accChart.getData().add(accSeries);
 
@@ -65,11 +70,20 @@ public class DrawMetricGraph extends VBox {
                     trim(accSeries);
                     updated = true;
                 }
-                if (updated) {
-                    // charts auto-refresh when data changes
-                }
             }
         }.start();
+    }
+
+    @Override
+    public void onStep(int step, double loss, double accuracy) {
+        push(step, loss, accuracy);
+    }
+
+    @Override
+    public void onEpoch(int epoch,
+                        ConfusionMatrix cm,
+                        double avgLoss,
+                        double accuracy) {
     }
 
     public void push(int step, double loss, double accuracy) {

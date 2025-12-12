@@ -5,8 +5,7 @@ import data.*;
 import nn.*;
 import scalar.*;
 import java.util.*;
-import java.util.function.IntConsumer;
-import java.util.function.BiConsumer;
+
 
 public class Trainer {
     private final Optimizer optim;
@@ -15,23 +14,12 @@ public class Trainer {
     private final DataLoader loader;
     private final CsvDataset ds;
     private List<Batch> data;
-    
-    private IntConsumer stepListener;              
-    private BiConsumer<Integer, ConfusionMatrix> epochListener;
 
     private double lastLoss = Double.NaN;
     private double lastAccuracy = Double.NaN;
+    private int demoDelayMs = 25;
 
-    public void setStepListener(IntConsumer l) { this.stepListener = l; }
-    public void setEpochListener(BiConsumer<Integer, ConfusionMatrix> l) { this.epochListener = l; }
-
-    public double getLastLoss() { return lastLoss; }
-    public double getLastAccuracy() { return lastAccuracy; }
-
-    private int demoDelayMs = 10;
-
-    public void setDemoDelayMs(int ms) { this.demoDelayMs = Math.max(0, ms); }
-
+    private final List<TrainingObserver> observers = new ArrayList<>();
 
     public Trainer(Optimizer optim, MLP model, int epochs, DataLoader loader, CsvDataset ds) {
         this.optim = optim;
@@ -45,26 +33,57 @@ public class Trainer {
     public Trainer(ModelConfig config, CsvDataset ds) {
         if (ds == null) throw new IllegalArgumentException("Dataset is null");
 
-        Optimizer opt = config.getOptimizer();
-        if (opt == null) opt = new Optimizer(config.getLearningRate());
+        Optimizer opt = config.getOrCreateOptimizer();
+        if (opt == null) opt = new SGDOptimizer(config.getLearningRate());
 
-        MLP mdl = config.getModel();
-        if (mdl == null) mdl = new MLP(config.getNumFeatures(), config.getLayerSizes());
+        MLP mdl = config.getOrCreateModel();
 
-        this.optim  = opt;
-        this.model  = mdl;
+        this.optim = opt;
+        this.model = mdl;
         this.epochs = config.getEpochs();
-        this.ds     = ds;
+        this.ds = ds;
 
         int bs = config.getBatchSize() > 0 ? config.getBatchSize() : 32;
         this.loader = new DataLoader(bs, false);
-
         this.data = loader.loadData(ds);
+    }
+
+    public void addObserver(TrainingObserver observer) {
+        if (observer != null) {
+            observers.add(observer);
+        }
+    }
+
+    public void removeObserver(TrainingObserver observer) {
+        observers.remove(observer);
+    }
+
+    private void notifyStep(int globalStep) {
+        for (TrainingObserver o : observers) {
+            o.onStep(globalStep, lastLoss, lastAccuracy);
+        }
+    }
+
+    private void notifyEpoch(int epoch,
+                             ConfusionMatrix cm,
+                             double avgLoss,
+                             double accuracy) {
+        for (TrainingObserver o : observers) {
+            o.onEpoch(epoch, cm, avgLoss, accuracy);
+        }
+    }
+
+    public double getLastLoss()     { return lastLoss; }
+    public double getLastAccuracy() { return lastAccuracy; }
+
+    public void setDemoDelayMs(int ms) {
+        this.demoDelayMs = Math.max(0, ms);
     }
 
     private Scalar softplus(Scalar z) {
         Scalar abs = z.abs();
-        return Scalar.max(z, new Scalar(0.0)).add(abs.neg().exp().add(new Scalar(1.0)).log());
+        return Scalar.max(z, new Scalar(0.0))
+                     .add(abs.neg().exp().add(new Scalar(1.0)).log());
     }
 
     private Scalar bceWithLogits(Scalar logit, int y) {
@@ -72,12 +91,12 @@ public class Trainer {
     }
 
     public void train() {
-        final double threshold = 0.5;
-        final boolean outputsAreLogits = true;
-        
+        final double  threshold         = 0.5;
+        final boolean outputsAreLogits  = true;
+
         ConfusionMatrix confmat = new ConfusionMatrix();
         int globalStep = 0;
-        
+
         for (int epoch = 0; epoch < epochs; epoch++) {
             data = loader.loadData(ds);
             confmat.reset();
@@ -86,8 +105,8 @@ public class Trainer {
             int numCorrect = 0;
 
             for (Batch b : data) {
-                List<Integer> labels = b.label();            
-                List<List<Scalar>> features = b.features();  
+                List<Integer> labels = b.label();
+                List<List<Scalar>> features = b.features();
                 int numFeatures = features.size();
                 int batchSize = features.get(0).size();
 
@@ -108,8 +127,6 @@ public class Trainer {
                     if (pred == label) numCorrect++;
                     confmat.update(label, pred);
 
-                    //could change to binary cross entropy
-                    //Scalar loss = out.sub(new Scalar(label)).pow(2.0);
                     Scalar loss = bceWithLogits(out, label);
                     model.zeroGrad();
                     loss.backward();
@@ -118,16 +135,17 @@ public class Trainer {
                     epochLoss += (float) loss.data();
                     count++;
 
-                    this.lastLoss = (float) loss.data();
+                    this.lastLoss = loss.data();
                     this.lastAccuracy = numCorrect / (double) count;
+
                     globalStep++;
-                    if (stepListener != null) stepListener.accept(globalStep);
+                    notifyStep(globalStep);
 
                     if (demoDelayMs > 0) {
                         try {
                             Thread.sleep(demoDelayMs);
                         } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt(); 
+                            Thread.currentThread().interrupt();
                             return;
                         }
                     }
@@ -137,10 +155,7 @@ public class Trainer {
             double acc = (count == 0) ? 0.0 : numCorrect / (double) count;
             float avgLoss = (count == 0) ? 0f : epochLoss / count;
             System.out.printf("Epoch %d, Acc: %.4f, Loss: %.6f%n", epoch + 1, acc, avgLoss);
-
-            if (epochListener != null) epochListener.accept(epoch + 1, confmat);
+            notifyEpoch(epoch + 1, confmat, avgLoss, acc);
         }
     }
-
-
 }
