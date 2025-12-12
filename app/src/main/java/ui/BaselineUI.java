@@ -62,6 +62,14 @@ public class BaselineUI extends Application {
         TextField epochs = new TextField();
         epochs.setPromptText("Epochs (e.g. 100)");
 
+        TextField lrDecay = new TextField();
+        lrDecay.setPromptText("LR decay (exp, optional, e.g. 0.99)");
+
+        ComboBox<OptimizerType> optimizerChoice = new ComboBox<>();
+        optimizerChoice.getItems().setAll(OptimizerType.values());
+        optimizerChoice.setPromptText("Optimizer");
+        optimizerChoice.setValue(OptimizerType.SGD); // default
+
         Button trainButton = new Button("Train Model");
 
         DrawMetricGraph graphs = new DrawMetricGraph();
@@ -70,7 +78,7 @@ public class BaselineUI extends Application {
         cmArea.setEditable(false);
         cmArea.setPrefRowCount(6);
         cmArea.setPromptText("Confusion matrix and epoch metrics will appear here…");
-        
+
         loadConfigButton.setOnAction(e -> {
             if (configLoaded.get() && loaded != null) {
                 new Alert(Alert.AlertType.INFORMATION, "Config already loaded.").showAndWait();
@@ -133,6 +141,10 @@ public class BaselineUI extends Application {
                 if (loaded.getEpochs() > 0) epochs.setText(String.valueOf(loaded.getEpochs()));
                 if (loaded.getBatchSize() > 0) batchSize.setText(String.valueOf(loaded.getBatchSize()));
 
+                if (loaded.getOptimizerType() != null) {
+                    optimizerChoice.setValue(loaded.getOptimizerType());
+                }
+
                 new Alert(Alert.AlertType.INFORMATION, "Config loaded from:\n" + chosenPath).showAndWait();
             } catch (Exception ex) {
                 new Alert(Alert.AlertType.ERROR, "Failed to load config:\n" + ex.getMessage()).showAndWait();
@@ -157,7 +169,14 @@ public class BaselineUI extends Application {
                         lastDir = Paths.get(ds).toAbsolutePath().getParent().toFile();
                     } catch (Exception ignore) {}
 
-                    OptimizerType type = OptimizerType.SGD;
+                    OptimizerType type = optimizerChoice.getValue();
+                    if (type == null) type = OptimizerType.SGD;
+
+                    LearningRateScheduler scheduler = null;
+                    if (!isBlank(lrDecay.getText())) {
+                        double decay = parseDouble(lrDecay.getText(), "LR decay");
+                        scheduler = new ExponentialDecayScheduler(lr, decay);
+                    }
 
                     MLP model = new MLP(inSize, layerSizesList);
 
@@ -169,13 +188,17 @@ public class BaselineUI extends Application {
                             .datasetPath(ds)
                             .optimizerType(type)
                             .model(model);
+
                     if (bs != null) b.batchSize(bs);
+                    if (scheduler != null) b.learningRateScheduler(scheduler);
+
                     cfg = b.build();
 
                 } else {
                     cfg = loaded;
 
-                    if (!isBlank(datasetPath.getText())) cfg.setDatasetPath(datasetPath.getText().trim());
+                    if (!isBlank(datasetPath.getText()))
+                        cfg.setDatasetPath(datasetPath.getText().trim());
                     if (!isBlank(inputSize.getText()))
                         cfg.setNumFeatures(parseInt(inputSize.getText().trim(), "Input size"));
                     if (!isBlank(layers.getText()))
@@ -187,20 +210,30 @@ public class BaselineUI extends Application {
                     if (!isBlank(batchSize.getText()))
                         cfg.setBatchSize(parseInt(batchSize.getText().trim(), "Batch size"));
 
-                    OptimizerType type = cfg.getOptimizerType();
+                    OptimizerType type = optimizerChoice.getValue();
                     if (type == null) {
-                        type = OptimizerType.SGD;
+                        type = cfg.getOptimizerType();
+                        if (type == null) type = OptimizerType.SGD;
+                    }
+
+                    double lr = cfg.getLearningRate();
+
+                    LearningRateScheduler scheduler = null;
+                    if (!isBlank(lrDecay.getText())) {
+                        double decay = parseDouble(lrDecay.getText(), "LR decay");
+                        scheduler = new ExponentialDecayScheduler(lr, decay);
                     }
 
                     cfg = new ModelConfig.Builder()
                             .numFeatures(cfg.getNumFeatures())
                             .layerSizes(cfg.getLayerSizes())
-                            .learningRate(cfg.getLearningRate())
+                            .learningRate(lr)
                             .epochs(cfg.getEpochs())
                             .batchSize(cfg.getBatchSize())
                             .datasetPath(cfg.getDatasetPath())
                             .optimizerType(type)
                             .model(new MLP(cfg.getNumFeatures(), cfg.getLayerSizes()))
+                            .learningRateScheduler(scheduler)
                             .build();
 
                     String dsPath = requireNonEmpty(cfg.getDatasetPath(), "Dataset path (from YAML/fields)");
@@ -273,13 +306,15 @@ public class BaselineUI extends Application {
                 title,
                 loadConfigButton, labelColumn,
                 datasetPath, batchSize, inputSize, layers, learningRate, epochs,
+                optimizerChoice,
+                lrDecay,
                 trainButton,
                 graphs,
                 new Label("Epoch summaries (confusion matrix):"),
                 cmArea
         );
 
-        Scene scene = new Scene(root, 480, 420);
+        Scene scene = new Scene(root, 480, 500);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
