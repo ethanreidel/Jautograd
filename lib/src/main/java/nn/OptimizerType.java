@@ -2,5 +2,7 @@ package nn;
 
 public enum OptimizerType {
     SGD,
-    ADAM
+    ADAM,
+    RMSPROP,
+    MOMENTUM
 }
