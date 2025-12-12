@@ -1,50 +1,65 @@
-// package integration_tests;
+package integration_tests;
 
+import data.CsvDataset;
+import nn.ModelConfig;
+import nn.MLP;
+import nn.OptimizerType;
+import nn.Trainer;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-// import static org.junit.jupiter.api.Assertions.*;
-// import static org.mockito.Mockito.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 
-// import java.time.Clock;
-// import java.time.Instant;
-// import java.time.ZoneOffset;
+import static org.junit.jupiter.api.Assertions.*;
 
-// import org.junit.jupiter.api.DisplayName;
-// import org.junit.jupiter.api.Test;
+public class TrainPipelineIntegrationIT {
 
-// public class TrainPipelineIntegrationIT {
+    @Test
+    @DisplayName("End-to-end training on tiny XOR dataset")
+    void trainEnd2End() throws Exception {
+        Path tmp = Files.createTempFile("xor_dataset", ".csv");
+        String csv = String.join("\n",
+                "x1,x2,label",
+                "0,0,0",
+                "0,1,1",
+                "1,0,1",
+                "1,1,0"
+        );
+        Files.writeString(tmp, csv);
 
-//     @Test
-//     void trainEnd2End() {
-//         var datasets = new DatasetRepository.InMemory();
-//         var artifacts = new ArtifactRepository.InMemory();
-//         var jobs = new JobRepository.InMemory();
-//         var metricsRepo = new MetricsRepository.InMemory();
+        CsvDataset ds = new CsvDataset(tmp, "label");
 
-//         var ds = Dataset.create("xor", "csv", "label", Fixtures.mnistFiles());
-//         ds.markReady();
-//         datasets.save(ds);
+        int numFeatures = 2;
+        List<Integer> layerSizes = List.of(4, 1);
 
-//         var cfg = ModelConfig.define(
-//             "MLP", new int[]{784, 128, 10}, new String[]{"relu","softmax"},
-//             "sgd", ds.getName(), new Hyperparams(1e-3, 64, 2)
-//         );
+        double learningRate = 0.1;
+        int epochs = 300;
+        int batchSize = 1;
 
-//         var clock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
-//         var trainer = new Trainer(artifacts, jobs, metricsRepo, clock);
-//         var loader  = new DataLoader(64, true); //shuffle param
+        ModelConfig cfg = new ModelConfig.Builder()
+                .numFeatures(numFeatures)
+                .layerSizes(layerSizes)
+                .learningRate(learningRate)
+                .epochs(epochs)
+                .batchSize(batchSize)
+                .datasetPath(tmp.toString())
+                .optimizerType(OptimizerType.SGD)
+                .model(new MLP(numFeatures, layerSizes))
+                .build();
 
-//         var job = trainer.train(new TrainingJob(cfg, ds, loader));
+        Trainer trainer = new Trainer(cfg, ds);
+        trainer.train();
 
-//         assertEquals(JobState.COMPLETED, job.getState());
-//         assertNotNull(job.getArtifactId());
-//         assertTrue(artifacts.find(job.getArtifactId()).getSizeBytes() > 0);
+        double finalAcc = trainer.getLastAccuracy();
+        double finalLoss = trainer.getLastLoss();
 
-//         var history = metricsRepo.forJob(job.getId());
-//         assertEquals(2, history.size());
-//         assertEquals(0.9, history.get(0).loss(), 1e-6);
-//         assertEquals(0.6, history.get(0).accuracy(), 1e-6);
-//         assertEquals(0.6, history.get(1).loss(), 1e-6);
-//         assertEquals(0.8, history.get(1).accuracy(), 1e-6);
-//     }
-// }
+        assertFalse(Double.isNaN(finalAcc), "Final accuracy should be a real number");
+        assertFalse(Double.isNaN(finalLoss), "Final loss should be a real number");
+
+        assertTrue(finalAcc >= 0.75,
+                "Expected accuracy >= 0.75 on XOR, but was " + finalAcc);
+    }
+}

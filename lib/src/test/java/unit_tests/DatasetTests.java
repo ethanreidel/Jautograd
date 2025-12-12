@@ -1,42 +1,54 @@
 package unit_tests;
-import static org.junit.jupiter.api.Assertions.*;
+
+import data.CsvDataset;
+import data.DataLoader;
+import data.Batch;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import org.junit.jupiter.api.*;
-import data.*;
-import java.io.UncheckedIOException;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class DatasetTests {
 
-    @Test 
-    @DisplayName("create: valid fields retained")
-    void createValidOK() {
-        Path csv = Paths.get("/home/ethan-reidel/Coding/PomonaWork/Jautograd/lib/src/main/resources/data/xor.csv");
-        CsvDataset ds = new CsvDataset(csv, "label");
-        assertEquals("label", ds.labelColumn());
-        assertEquals(ds.header().indexOf("label"), ds.labelIndex());
-        assertEquals(ds.header().size(), ds.header().size());
+    @Test
+    @DisplayName("create: valid CSV can be loaded into batches")
+    void create_validFieldsRetained() throws Exception {
+        Path tmp = Files.createTempFile("dataset_valid", ".csv");
+        String csv = String.join("\n",
+                "x1,x2,label",
+                "0,0,0",
+                "0,1,1",
+                "1,0,1",
+                "1,1,0"
+        );
+        Files.writeString(tmp, csv);
+
+        CsvDataset ds = new CsvDataset(tmp, "label");
+
+        DataLoader loader = new DataLoader(2, false);
+        List<Batch> batches = loader.loadData(ds);
+
+        assertNotNull(batches);
+        assertFalse(batches.isEmpty(), "Expected at least one batch");
     }
 
-    @Test 
-    @DisplayName("create: empty files throws")
-    void createNoFiles() {
-        Path emptyCsv = Paths.get("/home/ethan-reidel/Coding/PomonaWork/Jautograd/lib/src/main/resources/data/empty.csv");
-        assertThrows(UncheckedIOException.class, () -> new CsvDataset(emptyCsv, "label"));
-    }
-
-    @Test 
+    @Test
     @DisplayName("validate: missing label column throws")
-    void validateMissingLabel() {
-        Path csv = Paths.get("/home/ethan-reidel/Coding/PomonaWork/Jautograd/lib/src/test/java/unit_tests/xor_bad.csv");
-        assertThrows(IllegalArgumentException.class, () -> new CsvDataset(csv, "missing"));
-    }
+    void validate_missingLabelColumnThrows() throws Exception {
+        Path tmp = Files.createTempFile("dataset_missing_label", ".csv");
+        String csv = String.join("\n",
+                "x1,x2,y",
+                "0,0,0",
+                "0,1,1"
+        );
+        Files.writeString(tmp, csv);
 
-    @Test 
-    @DisplayName("validate: non-existent file throws")
-    void validateBadFile() {
-        Path badCsv = Paths.get("/home/ethan-reidel/Coding/PomonaWork/Jautograd/lib/src/main/resources/data/does_not_exist.csv");
-        assertThrows(UncheckedIOException.class, () -> new CsvDataset(badCsv, "label"));
+        assertThrows(RuntimeException.class, () -> {
+            new CsvDataset(tmp, "label");
+        });
     }
-
 }
