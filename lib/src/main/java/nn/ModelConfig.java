@@ -13,7 +13,7 @@ public class ModelConfig {
     private int epochs;
     private int batchSize;
     private String datasetPath;
-
+    private LearningRateScheduler learningRateScheduler;
 
     private OptimizerType optimizerType = OptimizerType.SGD;
 
@@ -31,6 +31,7 @@ public class ModelConfig {
         this.datasetPath = builder.datasetPath;
         this.optimizer = builder.optimizer;
         this.model = builder.model;
+        this.learningRateScheduler = builder.learningRateScheduler;
     }
 
     public int getNumFeatures() { return numFeatures; }
@@ -40,7 +41,10 @@ public class ModelConfig {
     public int getBatchSize() { return batchSize; }
     public String getDatasetPath() { return datasetPath; }
     public OptimizerType getOptimizerType() { return optimizerType; }
-    
+    public LearningRateScheduler getLearningRateScheduler() { return learningRateScheduler; }
+
+
+
     public MLP getModel() { return model; }
     
     public void setOptimizerType(OptimizerType optimizerType) { this.optimizerType = optimizerType; }
@@ -50,6 +54,9 @@ public class ModelConfig {
     public void setEpochs(int epochs) { this.epochs = epochs; }
     public void setBatchSize(int batchSize) { this.batchSize = batchSize; }
     public void setDatasetPath(String datasetPath) { this.datasetPath = datasetPath; }
+    public void setLearningRateScheduler(LearningRateScheduler learningRateScheduler) { this.learningRateScheduler = learningRateScheduler; }
+
+
 
     public static class Builder {
         private int numFeatures;
@@ -59,6 +66,7 @@ public class ModelConfig {
         private int batchSize;
         private String datasetPath;
         private OptimizerType optimizerType = OptimizerType.SGD;
+        private LearningRateScheduler learningRateScheduler;
         private Optimizer optimizer;
         private MLP model;
 
@@ -77,6 +85,12 @@ public class ModelConfig {
             this.optimizer = optimizer;
             return this;
         }
+        public Builder learningRateScheduler(LearningRateScheduler scheduler) {
+            this.learningRateScheduler = scheduler;
+            return this;
+        }
+
+
         public ModelConfig build() { return new ModelConfig(this); }
     }
 
@@ -84,16 +98,16 @@ public class ModelConfig {
         if (this.optimizer != null) {
             return this.optimizer;
         }
-
         if (optimizerType == null) {
             optimizerType = OptimizerType.SGD;
         }
-
         switch (optimizerType) {
-            //TODO ADD ADAM
-            //case ADAM:
-            //    return new AdamOptimizer(learningRate);
-
+            case ADAM:
+                return new AdamOptimizer(learningRate);
+            case RMSPROP:
+                return new RMSPropOptimizer(learningRate);
+            case MOMENTUM:
+                return new MomentumOptimizer(learningRate);
             case SGD:
             default:
                 return new SGDOptimizer(learningRate);
@@ -113,6 +127,7 @@ public class ModelConfig {
         }
         return model;
     }
+
 
     public void saveConfigYaml(String filePath) {
         Yaml yaml = new Yaml();

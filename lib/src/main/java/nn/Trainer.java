@@ -14,6 +14,7 @@ public class Trainer {
     private final DataLoader loader;
     private final CsvDataset ds;
     private List<Batch> data;
+    private final LearningRateScheduler learningRateScheduler;
 
     private double lastLoss = Double.NaN;
     private double lastAccuracy = Double.NaN;
@@ -21,13 +22,14 @@ public class Trainer {
 
     private final List<TrainingObserver> observers = new ArrayList<>();
 
-    public Trainer(Optimizer optim, MLP model, int epochs, DataLoader loader, CsvDataset ds) {
+    public Trainer(Optimizer optim, MLP model, int epochs, DataLoader loader, CsvDataset ds, LearningRateScheduler scheduler) {
         this.optim = optim;
         this.model = model;
         this.epochs = epochs;
         this.loader = loader;
         this.ds = ds;
         this.data = loader.loadData(ds);
+        this.learningRateScheduler = scheduler;
     }
 
     public Trainer(ModelConfig config, CsvDataset ds) {
@@ -46,6 +48,7 @@ public class Trainer {
         int bs = config.getBatchSize() > 0 ? config.getBatchSize() : 32;
         this.loader = new DataLoader(bs, false);
         this.data = loader.loadData(ds);
+        this.learningRateScheduler = config.getLearningRateScheduler();
     }
 
     public void addObserver(TrainingObserver observer) {
@@ -104,6 +107,11 @@ public class Trainer {
             int count = 0;
             int numCorrect = 0;
 
+            if (learningRateScheduler != null && optim instanceof AbstractOptimizer ao) {
+                double newLr = learningRateScheduler.getLearningRate(epoch);
+                ao.setLearningRate(newLr);
+            }
+
             for (Batch b : data) {
                 List<Integer> labels = b.label();
                 List<List<Scalar>> features = b.features();
@@ -154,7 +162,7 @@ public class Trainer {
 
             double acc = (count == 0) ? 0.0 : numCorrect / (double) count;
             float avgLoss = (count == 0) ? 0f : epochLoss / count;
-            System.out.printf("Epoch %d, Acc: %.4f, Loss: %.6f%n", epoch + 1, acc, avgLoss);
+            System.out.printf("Epoch %d, Acc: %.4f, Loss: %.2f%n", epoch + 1, acc, avgLoss);
             notifyEpoch(epoch + 1, confmat, avgLoss, acc);
         }
     }
