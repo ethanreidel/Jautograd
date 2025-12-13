@@ -1,68 +1,105 @@
 package data;
 
-import java.security.InvalidParameterException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 import scalar.Scalar;
 
+/**
+ * Creates mini-batches ({@link Batch}) from a {@link CsvDataset}.
+ *
+ * <p>Each batch has:
+ * <ul>
+ *   <li>features: [numFeatures][batchSize] of {@link Scalar}</li>
+ *   <li>label: list of integer labels, one per sample</li>
+ * </ul>
+ */
 public final class DataLoader {
+
     private final int batchSize;
     private final boolean shuffle;
-    private final Random rng; // optional deterministic shuffle
+    private final Random rng;
 
     public DataLoader(int batchSize, boolean shuffle) {
         this(batchSize, shuffle, null);
     }
 
     public DataLoader(int batchSize, boolean shuffle, Long seed) {
-        if (batchSize <= 0) throw new InvalidParameterException("batchSize must be > 0");
+        if (batchSize <= 0) {
+            throw new IllegalArgumentException("batchSize must be > 0");
+        }
         this.batchSize = batchSize;
         this.shuffle = shuffle;
         this.rng = (seed == null) ? null : new Random(seed);
     }
 
-    public int batchSize() { return batchSize; }
+    public int batchSize() {
+        return batchSize;
+    }
 
-    public List<Batch> loadData(CsvDataset ds) {
-        if (ds == null) throw new InvalidParameterException("Dataset is not ready");
+    /**
+     * Loads the entire dataset into memory and returns a list of batches.
+     *
+     * @throws IllegalArgumentException if dataset is null or inconsistent.
+     */
+    public List<Batch> loadData(CsvDataset dataset) {
+        if (dataset == null) {
+            throw new IllegalArgumentException("dataset must not be null");
+        }
 
-        List<Example> all = new ArrayList<>();
-        for (Example e : ds) all.add(e);
+        List<Example> examples = new ArrayList<>();
+        for (Example example : dataset) {
+            examples.add(example);
+        }
 
-        if (all.isEmpty()) return Collections.emptyList();
+        if (examples.isEmpty()) {
+            return Collections.emptyList();
+        }
 
         if (shuffle) {
-            if (rng != null) Collections.shuffle(all, rng);
-            else Collections.shuffle(all);
+            if (rng != null) {
+                Collections.shuffle(examples, rng);
+            } else {
+                Collections.shuffle(examples);
+            }
         }
 
-        int numFeatures = all.get(0).features().length;
-        List<Batch> output = new ArrayList<>();
+        int numFeatures = examples.get(0).features().length;
+        List<Batch> batches = new ArrayList<>();
 
-        for (int i = 0; i < all.size(); i += batchSize) {
-            int j = Math.min(i + batchSize, all.size());
-            int thisBatch = j - i;
+        for (int start = 0; start < examples.size(); start += batchSize) {
+            int end = Math.min(start + batchSize, examples.size());
+            int currentBatchSize = end - start;
 
-            List<List<Scalar>> f = new ArrayList<>(numFeatures);
+            List<List<Scalar>> featureColumns = new ArrayList<>(numFeatures);
             for (int feat = 0; feat < numFeatures; feat++) {
-                f.add(new ArrayList<>(thisBatch));
+                featureColumns.add(new ArrayList<>(currentBatchSize));
             }
-            List<Integer> y = new ArrayList<>(thisBatch);
 
-            for (int k = i; k < j; k++) {
-                Example ex = all.get(k);
-                double[] feats = ex.features();
+            List<Integer> labels = new ArrayList<>(currentBatchSize);
+
+            for (int index = start; index < end; index++) {
+                Example example = examples.get(index);
+                double[] feats = example.features();
+
                 if (feats.length != numFeatures) {
-                    throw new InvalidParameterException("Inconsistent feature length at index " + k);
+                    throw new IllegalArgumentException(
+                            "Inconsistent feature length at index " + index
+                                    + ": expected " + numFeatures
+                                    + " but got " + feats.length
+                    );
                 }
+
                 for (int feat = 0; feat < numFeatures; feat++) {
-                    f.get(feat).add(new Scalar(feats[feat]));
+                    featureColumns.get(feat).add(new Scalar(feats[feat]));
                 }
-                y.add(ex.label());
+                labels.add(example.label());
             }
 
-            output.add(new Batch(f, y));
+            batches.add(new Batch(featureColumns, labels));
         }
 
-        return output;
+        return batches;
     }
 }

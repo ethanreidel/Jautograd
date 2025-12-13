@@ -1,49 +1,75 @@
 package nn;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import scalar.Scalar;
 
+/**
+ * Multi-layer perceptron composed of stacked {@link Layer} objects.
+ */
 public class MLP extends Module {
+
     private final List<Layer> layers;
 
+    /**
+     * Constructs an MLP.
+     *
+     * @param nin   number of input features
+     * @param nouts list of output sizes for each layer
+     */
     public MLP(int nin, List<Integer> nouts) {
+        if (nouts == null || nouts.isEmpty()) {
+            throw new IllegalArgumentException("nouts must not be null or empty");
+        }
+
         this.layers = new ArrayList<>();
-        List<Integer> sz = new ArrayList<>();
-        sz.add(nin);
-        sz.addAll(nouts);
+        List<Integer> sizes = new ArrayList<>(nouts.size() + 1);
+        sizes.add(nin);
+        sizes.addAll(nouts);
+
         for (int i = 0; i < nouts.size(); i++) {
-            boolean nonlin = i != nouts.size() - 1;
-            layers.add(new Layer(sz.get(i), sz.get(i + 1), nonlin));
+            boolean nonlin = (i != nouts.size() - 1);
+            layers.add(new Layer(sizes.get(i), sizes.get(i + 1), nonlin));
         }
     }
 
     @Override
     public List<Scalar> forward(List<Scalar> x) {
-        List<Scalar> out = x;
-        for (Layer layer : layers) {
-            out = layer.forward(out);
+        if (x == null) {
+            throw new IllegalArgumentException("input must not be null");
         }
-        return out;
+
+        List<Scalar> output = x;
+        for (Layer layer : layers) {
+            output = layer.forward(output);
+        }
+        return output;
     }
 
     @Override
     public List<Scalar> parameters() {
-        List<Scalar> params = new ArrayList<>();
+        List<Scalar> parameters = new ArrayList<>();
         for (Layer layer : layers) {
-            params.addAll(layer.parameters());
+            parameters.addAll(layer.parameters());
         }
-        return params;
+        return parameters;
+    }
+
+    public List<Layer> getLayers() {
+        return Collections.unmodifiableList(layers);
     }
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder("MLP of [");
+        StringBuilder builder = new StringBuilder("MLP of [");
         for (int i = 0; i < layers.size(); i++) {
-            sb.append(layers.get(i));
-            if (i < layers.size() - 1) sb.append(", ");
+            builder.append(layers.get(i));
+            if (i < layers.size() - 1) {
+                builder.append(", ");
+            }
         }
-        sb.append("]");
-        return sb.toString();
+        builder.append(']');
+        return builder.toString();
     }
 }
